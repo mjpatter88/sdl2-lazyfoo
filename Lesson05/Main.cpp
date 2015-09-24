@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include <SDL_image.h>
 #include <stdio.h>
 #include <iostream>
 
@@ -64,7 +65,14 @@ bool init()
 			success = false;
 		}
 		else {
-			screenSurface = SDL_GetWindowSurface(window);
+			int imgFlags = IMG_INIT_PNG;
+			if (IMG_Init(imgFlags) & imgFlags != imgFlags) {
+				printf("SDL_image could not be initialized: %s\n", IMG_GetError());
+				success = false;
+			}
+			else {
+				screenSurface = SDL_GetWindowSurface(window);
+			}
 		}
 	}
 	return success;
@@ -73,7 +81,7 @@ bool init()
 bool loadMedia()
 {
 	bool success = true;
-	currentImageSurface = loadSurface("up.bmp");
+	currentImageSurface = loadSurface("loaded.png");
 	if (currentImageSurface == NULL) {
 		printf("Failed to load up image. \n");
 		success = false;
@@ -93,7 +101,7 @@ void close()
 SDL_Surface* loadSurface(std::string path)
 {
 	SDL_Surface* optimizedSurface = NULL;
-	SDL_Surface* newSurface = SDL_LoadBMP(path.c_str());
+	SDL_Surface* newSurface = IMG_Load(path.c_str());
 	if (newSurface == NULL) {
 		printf("Unable to load image %s. SDL Error: %s\n", path.c_str(), SDL_GetError());
 	}
