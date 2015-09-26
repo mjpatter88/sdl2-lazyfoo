@@ -9,12 +9,12 @@ const int SCREEN_HEIGHT = 480;
 bool init();
 bool loadMedia();
 void close();
-SDL_Surface* loadSurface(std::string path);
+SDL_Texture* loadTexture(std::string path);
 
 // Surface rendering is slow and done through software.
 SDL_Window* window = NULL;
-SDL_Surface* screenSurface = NULL;
-SDL_Surface* currentImageSurface = NULL;
+SDL_Renderer* renderer = NULL;
+SDL_Texture* texture = NULL;
 
 int main(int argc, char* argv[])
 {
@@ -39,13 +39,9 @@ int main(int argc, char* argv[])
 				quit = true;
 			}
 		}
-		SDL_Rect stretchRect;
-		stretchRect.x = 0;
-		stretchRect.y = 0;
-		stretchRect.w = SCREEN_WIDTH;
-		stretchRect.h = SCREEN_HEIGHT;
-		SDL_BlitScaled(currentImageSurface, NULL, screenSurface, &stretchRect);
-		SDL_UpdateWindowSurface(window);
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, texture, NULL, NULL);
+		SDL_RenderPresent(renderer);
 	}
 	close();
 	return 0;
@@ -65,13 +61,18 @@ bool init()
 			success = false;
 		}
 		else {
-			int imgFlags = IMG_INIT_PNG;
-			if (IMG_Init(imgFlags) & imgFlags != imgFlags) {
-				printf("SDL_image could not be initialized: %s\n", IMG_GetError());
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+			if (renderer == NULL) {
+				printf("Renderer could not be created: %s\n", SDL_GetError());
 				success = false;
 			}
 			else {
-				screenSurface = SDL_GetWindowSurface(window);
+				SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+				int imgFlags = IMG_INIT_PNG;
+				if (IMG_Init(imgFlags) & imgFlags != imgFlags) {
+					printf("SDL_image could not be initialized: %s\n", IMG_GetError());
+					success = false;
+				}
 			}
 		}
 	}
@@ -81,9 +82,9 @@ bool init()
 bool loadMedia()
 {
 	bool success = true;
-	currentImageSurface = loadSurface("loaded.png");
-	if (currentImageSurface == NULL) {
-		printf("Failed to load up image. \n");
+	texture = loadTexture("press.bmp");
+	if (texture == NULL) {
+		printf("Failed to load press image. \n");
 		success = false;
 	}
 	return success;
@@ -91,27 +92,30 @@ bool loadMedia()
 
 void close()
 {
-	SDL_FreeSurface(currentImageSurface);
-	SDL_DestroyWindow(window);	//Also destroys the screen surface.
+	SDL_DestroyTexture(texture);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);	
+	renderer = NULL;
 	window = NULL;
 
+	IMG_Quit();
 	SDL_Quit();
 }
 
-SDL_Surface* loadSurface(std::string path)
+SDL_Texture* loadTexture(std::string path)
 {
-	SDL_Surface* optimizedSurface = NULL;
-	SDL_Surface* newSurface = IMG_Load(path.c_str());
-	if (newSurface == NULL) {
-		printf("Unable to load image %s. SDL Error: %s\n", path.c_str(), SDL_GetError());
+	SDL_Texture* newTexture = NULL;
+	SDL_Surface* loadedSurface = IMG_Load(path.c_str());
+	if (loadedSurface == NULL) {
+		printf("Unable to load image %s. Error: %s\n", path.c_str(), IMG_GetError());
 	}
 	else {
-		optimizedSurface = SDL_ConvertSurface(newSurface, screenSurface->format, NULL);
-		if (optimizedSurface == NULL) {
-			printf("Unable to optimize image. SDL error: %s\n", SDL_GetError());
+		newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
+		if (newTexture == NULL) {
+			printf("Unable to create texture: %s\n", SDL_GetError());
 		}
-		SDL_FreeSurface(newSurface);
+		SDL_FreeSurface(loadedSurface);
 	}
-	return optimizedSurface;
+	return newTexture;
 }
 
